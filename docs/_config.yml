@@ -1,0 +1,15 @@
+title: Solar Analysis Project
+description: Exploring the relationship between temperature and solar panel energy production
+remote_theme: pages-themes/cayman@v0.2.0
+plugins:
+- jekyll-remote-theme
+- jekyll-seo-tag
+
+show_downloads: true
+google_analytics: [Your Google Analytics tracking ID]
+
+github:
+  repository_url: https://github.com/sawedge/solar_analysis
+  is_project_page: true
+  owner_name: sawedge
+  owner_url: https://github.com/sawedge
