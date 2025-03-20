@@ -1,15 +1,13 @@
 ---
 layout: default
-title: Solar Energy & Temperature - An Unexpected Pattern
+title: Solar Panel Data - An Unexpected Pattern
 ---
 
-# Solar Energy & Temperature: An Unexpected Pattern
+# Solar Panel Data - An Unexpected Pattern
 
 ## Introduction: A Simple Dataset
 
-It began with a simple email from a friend who had installed solar panels on his Wisconsin home. "I've been collecting this data for years," he wrote, "maybe you can find something interesting in it?"
-
-The attached CSV file was underwhelming at first glance - just two columns:
+10 years of solar panel data. Two columns. 
 
 ```
 Date/Time, Energy Produced (Wh)
@@ -17,42 +15,30 @@ Date/Time, Energy Produced (Wh)
 2013-07-29, 13267
 ...
 ```
+I mean, alright... we can make a line chart. 
 
-![Raw data sample](/assets/images/raw_data_sample.png)
+By itself, this was too basic to draw meaningful conclusions. The seasonal patterns were obvious - more sun in summer, less in winter - but I wondered where we could take it.
 
-By itself, this was too basic to draw meaningful conclusions. The seasonal patterns were obvious - more sun in summer, less in winter - but I wondered if there might be deeper insights hiding in the relationship between weather and energy production.
+## Enhancing the Dataset: NOAA Weather 
 
-## Enhancing the Dataset: NOAA Weather Integration
-
-To add context, I pulled historical weather data from NOAA for the nearest weather station to my friend's home - the Oshkosh Wittman Regional Airport. The weather dataset provided a wealth of variables:
+To add context, I pulled historical weather data from NOAA for a nearby weather station. The weather dataset provided a wealth of variables:
 
 - Daily temperature averages, minimums, and maximums
 - Precipitation measurements
 - Wind speed and direction
 - Cloud cover estimates
 
-```python
-def fetch_noaa_data(start_date: str, end_date: str) -> pd.DataFrame:
-    """
-    Fetch weather data from NOAA's API for the given date range.
-    
-    Args:
-        start_date: Start date in 'YYYY-MM-DD' format
-        end_date: End date in 'YYYY-MM-DD' format
-        
-    Returns:
-        DataFrame with weather data
-    """
-    # Code to fetch weather data from NOAA
-```
+We ignored everything except temperature. 
 
-By merging these datasets based on date, I created a rich foundation for analysis.
-
-## First Visualizations: Time Series Patterns
+## Time Series 
 
 Initial time series plots confirmed the expected seasonal variation in both solar production and temperature:
 
-![Time series of solar production](/assets/images/time_series_plot.png)
+![Time series of solar production](/data/plots/monthly_energy_production.png)
+
+We can also view both energy production and temperature on the same timeline:
+
+![Energy and temperature timeline](/data/plots/energy_temperature_timeline.png)
 
 The correlation seemed straightforward - solar production peaks in summer when temperatures are highest. But was the relationship really that simple?
 
@@ -88,7 +74,7 @@ The animation beautifully illustrated the yearly cycles, but I was still curious
 
 Plotting average temperature against energy production showed a positive correlation - hardly surprising:
 
-![Basic scatter plot](/assets/images/basic_scatter.png)
+![Basic scatter plot](/data/plots/monthly_temp_vs_energy.png)
 
 The correlation coefficient of approximately 0.65 confirmed a moderately strong relationship. However, this overall correlation was masking something far more interesting.
 
@@ -104,7 +90,7 @@ Instead of points randomly distributed along the correlation line, they formed d
 
 The most fascinating discovery was that when viewed by month, the temperature-production relationship forms a counterclockwise loop through the year:
 
-![Final visualization showing the loop pattern](/assets/images/temp_vs_solar_scatter.png)
+![Final visualization showing the loop pattern](/data/plots/seasonal_pattern.png)
 
 For the same temperature, solar panels produce significantly more energy in spring than in fall. For example, at 60°F:
 - In March/April: ~500 kWh/month
@@ -129,4 +115,4 @@ What began as a simple two-column dataset revealed a fascinating pattern that co
 
 ---
 
-*This analysis was conducted using Python with pandas, matplotlib, and seaborn. Full code available in the [GitHub repository](https://github.com/sawedge/solar_analysis).*
+*This analysis was conducted using Python with pandas, matplotlib, and numpy. All visualizations are generated directly from the processed data in our pipeline. Full code available in the [GitHub repository](https://github.com/sawedge/solar_analysis).*
