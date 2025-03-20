@@ -1,6 +1,4 @@
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
 from datetime import datetime
 import os
 import calendar
@@ -43,21 +41,62 @@ def load_energy_production_data(file_path):
         print(f"Error loading energy production data: {e}")
         return None
 
+def calculate_monthly_averages(df):
+    """
+    Calculate monthly average temperatures from weather data
+    
+    Args:
+        df: DataFrame with weather data
+        
+    Returns:
+        DataFrame with monthly average temperatures
+    """
+    if df is None or df.empty:
+        return None
+    
+    # Extract month and year
+    df['MONTH'] = df['DATE'].dt.month
+    df['YEAR'] = df['DATE'].dt.year
+    
+    # Check which temperature columns are available
+    temp_columns = []
+    for col in ['TAVG', 'TMAX', 'TMIN', 'TOBS']:
+        if col in df.columns and not df[col].isna().all():
+            temp_columns.append(col)
+    
+    if not temp_columns:
+        print("No temperature data available")
+        return None
+    
+    print(f"Available temperature columns: {temp_columns}")
+    
+    # Calculate monthly averages for each temperature column
+    monthly_data = df.groupby(['YEAR', 'MONTH'])[temp_columns].mean().reset_index()
+    
+    # Create a human-readable month name
+    month_names = {
+        1: 'January', 2: 'February', 3: 'March', 4: 'April', 5: 'May', 6: 'June',
+        7: 'July', 8: 'August', 9: 'September', 10: 'October', 11: 'November', 12: 'December'
+    }
+    monthly_data['MONTH_NAME'] = monthly_data['MONTH'].map(month_names)
+    
+    # Sort by year and month
+    monthly_data.sort_values(['YEAR', 'MONTH'], inplace=True)
+    
+    return monthly_data
+
 def load_temperature_data(station_id="USW00094855", data_file="historic_data.csv"):
     """
-    Load temperature data for a specific station using the monthly_temperature_analysis.py logic
+    Load temperature data for a specific station
     
     Args:
         station_id: ID of the weather station
         data_file: Name of the data file to load from the data/raw directory
         
     Returns:
-        DataFrame with monthly temperature data (pivot table)
+        DataFrame with monthly temperature data
     """
-    # We'll use the functions from monthly_temperature_analysis.py
-    from src.analysis.monthly_temperature_analysis import calculate_monthly_averages
-    
-    # Define a modified version of load_weather_data to use our new data path
+    # Define a function to load and process weather data
     def load_weather_data_from_raw(station_id, data_file):
         file_path = os.path.join('data', 'raw', data_file)
         print(f"Loading weather data for station {station_id} from {file_path}...")
@@ -84,7 +123,7 @@ def load_temperature_data(station_id="USW00094855", data_file="historic_data.csv
             # Convert DATE to datetime
             station_data['DATE'] = pd.to_datetime(station_data['DATE'])
             
-            # Process temperature columns (copied from monthly_temperature_analysis.py)
+            # Process temperature columns
             # If TAVG is not available but TOBS is, use TOBS as TAVG
             if ('TAVG' not in station_data.columns or station_data['TAVG'].isna().all()) and 'TOBS' in station_data.columns:
                 if not station_data['TOBS'].isna().all():
@@ -120,7 +159,6 @@ def load_temperature_data(station_id="USW00094855", data_file="historic_data.csv
         print(f"No monthly temperature data available for station {station_id}")
         return None
     
-    # Return the monthly data (not the pivot table)
     return monthly_data
 
 def calculate_monthly_energy_production(energy_df):
@@ -179,124 +217,6 @@ def merge_energy_and_temperature(energy_df, temp_df):
     
     return merged_df
 
-def plot_energy_temp_ratio(df, save_path=None):
-    """
-    Create plots of energy production, temperature, and their ratio over time
-    
-    Args:
-        df: DataFrame with merged energy and temperature data
-        save_path: Directory to save plots
-    """
-    if df is None or df.empty:
-        print("No data available for plotting")
-        return
-    
-    # Create date strings for x-axis
-    df['DATE_STR'] = df['YEAR'].astype(str) + '-' + df['MONTH'].astype(str)
-    
-    # Create figure with multiple subplots
-    fig, axes = plt.subplots(4, 1, figsize=(14, 16), sharex=True)
-    
-    # Plot 1: Energy Production
-    axes[0].plot(df['DATE_STR'], df['ENERGY_KWH'], 'o-', color='blue')
-    axes[0].set_title('Monthly Energy Production (kWh)')
-    axes[0].set_ylabel('Energy (kWh)')
-    axes[0].grid(True, alpha=0.3)
-    
-    # Plot 2: Average Temperature
-    axes[1].plot(df['DATE_STR'], df['TAVG'], 'o-', color='red')
-    axes[1].set_title('Monthly Average Temperature (°F)')
-    axes[1].set_ylabel('Temperature (°F)')
-    axes[1].grid(True, alpha=0.3)
-    
-    # Plot 3: Energy/Temp Ratio
-    axes[2].plot(df['DATE_STR'], df['ENERGY_TAVG_RATIO'], 'o-', color='purple')
-    axes[2].set_title('Energy Production to Average Temperature Ratio (kWh/°F)')
-    axes[2].set_ylabel('Ratio (kWh/°F)')
-    axes[2].grid(True, alpha=0.3)
-    
-    # Plot 4: Energy vs Temperature scatter plot
-    axes[3].scatter(df['TAVG'], df['ENERGY_KWH'], alpha=0.7)
-    axes[3].set_title('Energy Production vs. Average Temperature')
-    axes[3].set_xlabel('Temperature (°F)')
-    axes[3].set_ylabel('Energy (kWh)')
-    axes[3].grid(True, alpha=0.3)
-    
-    # Add trend line to scatter plot
-    if len(df) > 1:
-        z = np.polyfit(df['TAVG'], df['ENERGY_KWH'], 1)
-        p = np.poly1d(z)
-        axes[3].plot(
-            [df['TAVG'].min(), df['TAVG'].max()], 
-            [p(df['TAVG'].min()), p(df['TAVG'].max())], 
-            "r--", 
-            alpha=0.7
-        )
-        # Add correlation coefficient
-        corr = df['TAVG'].corr(df['ENERGY_KWH'])
-        axes[3].annotate(
-            f"Correlation: {corr:.2f}", 
-            xy=(0.05, 0.95), 
-            xycoords='axes fraction',
-            bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="gray", alpha=0.8)
-        )
-    
-    # Format x-axis for date plots
-    for ax in axes[:3]:
-        ax.tick_params(axis='x', rotation=45)
-    
-    plt.tight_layout()
-    
-    # Save or display the plots
-    if save_path:
-        plt.savefig(save_path)
-        print(f"Plot saved to {save_path}")
-    else:
-        plt.show()
-
-def analyze_seasonal_patterns(df):
-    """
-    Analyze seasonal patterns in energy production and temperature ratio
-    
-    Args:
-        df: DataFrame with merged energy and temperature data
-        
-    Returns:
-        DataFrame with seasonal analysis
-    """
-    if df is None or df.empty:
-        print("No data available for seasonal analysis")
-        return None
-    
-    # Define seasons (meteorological seasons in Northern Hemisphere)
-    season_map = {
-        12: 'Winter', 1: 'Winter', 2: 'Winter',
-        3: 'Spring', 4: 'Spring', 5: 'Spring',
-        6: 'Summer', 7: 'Summer', 8: 'Summer',
-        9: 'Fall', 10: 'Fall', 11: 'Fall'
-    }
-    df['SEASON'] = df['MONTH'].map(season_map)
-    
-    # Group by season
-    seasonal_analysis = df.groupby('SEASON').agg({
-        'ENERGY_KWH': 'mean',
-        'TAVG': 'mean',
-        'ENERGY_TAVG_RATIO': 'mean'
-    }).reset_index()
-    
-    # Sort by season
-    season_order = ['Winter', 'Spring', 'Summer', 'Fall']
-    seasonal_analysis['SEASON_ORDER'] = seasonal_analysis['SEASON'].map(
-        {season: i for i, season in enumerate(season_order)}
-    )
-    seasonal_analysis.sort_values('SEASON_ORDER', inplace=True)
-    seasonal_analysis.drop('SEASON_ORDER', axis=1, inplace=True)
-    
-    # Round values for display
-    seasonal_analysis = seasonal_analysis.round(2)
-    
-    return seasonal_analysis
-
 def save_processed_data(df, filename, index=False):
     """
     Save processed data to the processed directory
@@ -320,14 +240,15 @@ def save_processed_data(df, filename, index=False):
     return file_path
 
 def main():
+    """
+    Main function to process energy and temperature data
+    """
     # File paths
     energy_file = os.path.join('data', 'raw', '223752_site_energy_production_report.csv')
     weather_file = 'historic_data.csv'
     
-    # Create output directories
-    plots_dir = os.path.join('data', 'plots')
+    # Create processed directory
     processed_dir = os.path.join('data', 'processed')
-    os.makedirs(plots_dir, exist_ok=True)
     os.makedirs(processed_dir, exist_ok=True)
     
     # Load energy production data
@@ -346,7 +267,7 @@ def main():
     # Save monthly energy data
     save_processed_data(monthly_energy, 'monthly_energy.csv')
     
-    # Load temperature data from the nearest weather station with good data
+    # Load temperature data from the nearest weather station
     station_id = "USW00094855"  # OSHKOSH WITTMAN REGIONAL AIRPORT
     temp_data = load_temperature_data(station_id, weather_file)
     
@@ -361,71 +282,11 @@ def main():
         # Save the merged dataset
         save_processed_data(merged_data, 'energy_temperature_merged.csv')
         
-        # Print summary statistics
-        print("\n=== Energy Production to Temperature Ratio Analysis ===")
+        # Basic summary
+        print("\n=== Processing complete ===")
         print(f"Analysis period: {merged_data['YEAR'].min()}-{merged_data['MONTH'].min()} to {merged_data['YEAR'].max()}-{merged_data['MONTH'].max()}")
-        print(f"Total energy production: {merged_data['ENERGY_KWH'].sum():.2f} kWh")
-        print(f"Average monthly energy production: {merged_data['ENERGY_KWH'].mean():.2f} kWh")
-        print(f"Average energy/temperature ratio: {merged_data['ENERGY_TAVG_RATIO'].mean():.2f} kWh/°F")
-        
-        # Create a pivot table by year and month
-        print("\n=== Monthly Energy to Temperature Ratio ===")
-        pivot = merged_data.pivot_table(
-            index='MONTH_NAME',
-            columns='YEAR',
-            values='ENERGY_TAVG_RATIO',
-            aggfunc='mean'
-        )
-        
-        # Reorder months
-        month_order = [calendar.month_name[i] for i in range(1, 13)]
-        pivot = pivot.reindex(month_order)
-        
-        # Calculate row means
-        pivot['AVG'] = pivot.mean(axis=1)
-        
-        # Print pivot table
-        print(pivot.round(2))
-        
-        # Save pivot table
-        pivot_with_reset = pivot.reset_index()
-        save_processed_data(pivot_with_reset, 'monthly_energy_temp_ratio_pivot.csv')
-        
-        # Analyze seasonal patterns
-        seasonal_analysis = analyze_seasonal_patterns(merged_data)
-        print("\n=== Seasonal Analysis ===")
-        print(seasonal_analysis)
-        
-        # Save seasonal analysis
-        save_processed_data(seasonal_analysis, 'seasonal_analysis.csv')
-        
-        # Create plots
-        plot_path = os.path.join(plots_dir, 'energy_temp_ratio.png')
-        plot_energy_temp_ratio(merged_data, plot_path)
-        
-        # Additional plot: Monthly ratio by year
-        plt.figure(figsize=(14, 8))
-        
-        # Get years sorted
-        years = sorted(merged_data['YEAR'].unique())
-        
-        # Create month-based data for each year
-        for year in years:
-            year_data = merged_data[merged_data['YEAR'] == year]
-            plt.plot(year_data['MONTH'], year_data['ENERGY_TAVG_RATIO'], 'o-', label=str(year))
-        
-        plt.xlabel('Month')
-        plt.ylabel('Energy/Temperature Ratio (kWh/°F)')
-        plt.title('Monthly Energy to Temperature Ratio by Year')
-        plt.grid(True, alpha=0.3)
-        plt.legend()
-        plt.xticks(range(1, 13), [calendar.month_abbr[i] for i in range(1, 13)])
-        plt.tight_layout()
-        
-        monthly_ratio_path = os.path.join(plots_dir, 'monthly_energy_temp_ratio.png')
-        plt.savefig(monthly_ratio_path)
-        print(f"Plot saved to {monthly_ratio_path}")
-        
+        print(f"Total data points: {len(merged_data)}")
+        print(f"Saved merged data to {os.path.join(processed_dir, 'energy_temperature_merged.csv')}")
     else:
         print("Failed to merge energy and temperature data")
 
