@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import os
 import numpy as np
 
-from energy_temp_ratio_analysis import (
+from src.data_processing.energy_temperature_merger import (
     load_energy_production_data,
     calculate_monthly_energy_production,
     load_temperature_data,
@@ -250,31 +250,59 @@ def create_scatter_plot(merged_data, save_path=None):
     else:
         plt.show()
 
+def load_processed_data(file_path):
+    """
+    Load processed data from CSV file
+    
+    Args:
+        file_path: Path to the processed data file
+        
+    Returns:
+        DataFrame with data
+    """
+    try:
+        # Read the CSV file
+        df = pd.read_csv(file_path)
+        print(f"Loaded {len(df)} records from {file_path}")
+        return df
+    except Exception as e:
+        print(f"Error loading processed data: {e}")
+        return None
+
 def main():
-    # File paths
-    energy_file = os.path.join('data', '223752_site_energy_production_report.csv')
+    # File paths - try to use processed data if available, otherwise generate it
+    processed_file = os.path.join('data', 'processed', 'energy_temperature_merged.csv')
     
     # Create output directory for plots
     plots_dir = os.path.join('data', 'plots')
     os.makedirs(plots_dir, exist_ok=True)
     
-    # Load and process data
-    print("Loading and processing data...")
-    energy_data = load_energy_production_data(energy_file)
-    
-    if energy_data is None:
-        print("Cannot proceed without energy production data")
-        return
-    
-    # Calculate monthly energy production
-    monthly_energy = calculate_monthly_energy_production(energy_data)
-    
-    # Load temperature data from the nearest weather station
-    station_id = "USW00094855"  # OSHKOSH WITTMAN REGIONAL AIRPORT
-    temp_data = load_temperature_data(station_id)
-    
-    # Merge datasets
-    merged_data = merge_energy_and_temperature(monthly_energy, temp_data)
+    # Check if processed data exists
+    if os.path.exists(processed_file):
+        print(f"Loading processed data from {processed_file}")
+        merged_data = load_processed_data(processed_file)
+    else:
+        print("Processed data not found. Generating from raw data...")
+        # File paths for raw data
+        energy_file = os.path.join('data', 'raw', '223752_site_energy_production_report.csv')
+        
+        # Load and process data
+        print("Loading and processing data...")
+        energy_data = load_energy_production_data(energy_file)
+        
+        if energy_data is None:
+            print("Cannot proceed without energy production data")
+            return
+        
+        # Calculate monthly energy production
+        monthly_energy = calculate_monthly_energy_production(energy_data)
+        
+        # Load temperature data from the nearest weather station
+        station_id = "USW00094855"  # OSHKOSH WITTMAN REGIONAL AIRPORT
+        temp_data = load_temperature_data(station_id)
+        
+        # Merge datasets
+        merged_data = merge_energy_and_temperature(monthly_energy, temp_data)
     
     if merged_data is not None:
         # Print basic statistics
@@ -288,7 +316,7 @@ def main():
         plot_path = os.path.join(plots_dir, 'temp_vs_solar_scatter.png')
         create_scatter_plot(merged_data, plot_path)
     else:
-        print("Failed to merge energy and temperature data")
+        print("Failed to load or generate merged data")
 
 if __name__ == "__main__":
     main()
