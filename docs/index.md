@@ -34,7 +34,7 @@ We ignored everything except temperature.
 
 Initial time series plots confirmed the expected seasonal variation in both solar production and temperature:
 
-![Time series of solar production](/data/plots/monthly_energy_production.png)
+![Time series of solar production]({{ site.baseurl }}/data/plots/monthly_energy_production.png)
 
 We can also view both energy production and temperature on the same timeline:
 
