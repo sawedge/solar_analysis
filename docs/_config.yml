@@ -7,9 +7,9 @@ plugins:
 
 show_downloads: true
 google_analytics: [Your Google Analytics tracking ID]
+baseurl: "/solar_analysis"
 
 github:
-  baseurl: "/solar_analysis"
   repository_url: https://github.com/sawedge/solar_analysis
   is_project_page: true
   owner_name: sawedge
